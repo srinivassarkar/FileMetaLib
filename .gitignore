@@ -1,0 +1,26 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+env/
+venv/
+
+# VSCode / PyCharm settings
+.vscode/
+.idea/
+
+# Mac/Unix system files
+.DS_Store
+
+# Test / coverage output
+.coverage
+htmlcov/
+coverage.xml
+
+# Logs and local settings
+*.log
+*.env
+.env*
