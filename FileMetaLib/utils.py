@@ -6,7 +6,10 @@ Utility functions for FileMetaLib.
 import os
 import time
 from typing import Dict, Any
-
+from datetime import datetime
+from typing import Dict, Any
+import os
+import platform
 
 def normalize_path(path: str) -> str:
     """
@@ -28,6 +31,12 @@ def normalize_path(path: str) -> str:
     return path
 
 
+
+
+def format_time(epoch_time: float) -> str:
+    """Convert epoch time to human-readable format."""
+    return datetime.fromtimestamp(epoch_time).strftime("%Y-%m-%d %H:%M:%S")
+
 def get_system_metadata(path: str) -> Dict[str, Any]:
     """
     Get system metadata for a file.
@@ -46,15 +55,22 @@ def get_system_metadata(path: str) -> Dict[str, Any]:
 
     stat = os.stat(path)
 
+    # Handle platforms that may not have st_birthtime
+    if hasattr(stat, "st_birthtime"):
+        created_time = stat.st_birthtime
+    else:
+        created_time = stat.st_ctime if platform.system() == "Windows" else stat.st_mtime
+
     return {
         "path": path,
         "filename": os.path.basename(path),
         "extension": os.path.splitext(path)[1].lower()[1:],
         "size": stat.st_size,
-        "created": stat.st_ctime,
-        "modified": stat.st_mtime,
-        "accessed": stat.st_atime,
+        "created": format_time(created_time),
+        "modified": format_time(stat.st_mtime),
+        "accessed": format_time(stat.st_atime),
     }
+
 
 
 def format_timestamp(timestamp: float) -> str:
