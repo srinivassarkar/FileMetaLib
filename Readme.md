@@ -7,7 +7,6 @@ A developer-first Python library for attaching, indexing, and querying metadata 
 ```bash
 pip install filemetalib
 ```
-
 ## 🚀 Quick Start
 
 ```python
@@ -17,27 +16,56 @@ from filemetalib import FileMetaManager
 manager = FileMetaManager()
 
 # Add file with custom metadata
-manager.add_file("design.png", metadata={
+manager.add_file("design.png", {
     "tags": ["design", "UI"],
     "project": "website-redesign",
     "owner": "design-team"
 })
 
 # Search files by metadata
-results = manager.search({"tags": "design"})
+results = manager.search({"user.tags": {"$contains": "design"}})
 for file in results:
-    print(f"Found: {file.path}")
+    print(f"Found: {file}")
     # Do something with the file: open, move, delete, etc.
+
+# Expected output:
+# Found: design.png
     
 # Get metadata for a specific file
 meta = manager.get_metadata("design.png")
 print(meta)
-# Output includes both system metadata and user-defined metadata
+# Expected output:
+# {
+#   'system': {
+#     'path': '/path/to/design.png',
+#     'filename': 'design.png',
+#     'extension': 'png',
+#     'size': 12345,
+#     'created': 1712345678.0,
+#     'modified': 1712345678.0,
+#     'accessed': 1712345678.0
+#   },
+#   'user': {
+#     'tags': ['design', 'UI'],
+#     'project': 'website-redesign',
+#     'owner': 'design-team'
+#   }
+# }
 
 # Update metadata
 manager.update_metadata("design.png", {"status": "approved"})
 
 # Register a custom plugin for deeper file inspection
+from filemetalib.plugins import FilePlugin
+
+class MyImagePlugin(FilePlugin):
+    def supports(self, path):
+        return path.lower().endswith(('.png', '.jpg', '.jpeg'))
+        
+    def extract(self, path):
+        # Simple example - in real use, you'd use PIL or another library
+        return {"image_type": "png", "has_transparency": True}
+
 manager.register_plugin(MyImagePlugin())
 ```
 
@@ -49,6 +77,7 @@ Most file systems are limited in how you can organize and query files:
 - **File-type specific metadata** is locked in proprietary formats
 - **Searching across files** requires building custom indexers
 
+
 FileMetaLib solves these problems by providing:
 
 1. A unified metadata layer for **any file type**
@@ -56,6 +85,7 @@ FileMetaLib solves these problems by providing:
 3. **Custom user-defined metadata** (tags, owners, projects, etc.)
 4. A **plugin system** to extract domain-specific metadata
 5. **Simple, intuitive APIs** to add, search, and manage metadata
+
 
 ## 📚 Core Features
 
@@ -71,8 +101,9 @@ For every file, the system automatically captures:
   "filename": "document.pdf",               # File name
   "extension": "pdf",                       # File extension
   "size": 4096,                             # Size in bytes
-  "created_at": "2025-06-15T10:30:00",      # Creation timestamp
-  "modified_at": "2025-06-16T14:22:35"      # Last modified timestamp
+  'created': '2025-04-11 15:47:54',          # Creationtimestamp
+  "modified": '2025-04-11 15:47:54',         # Last modified timestamp
+  "accessed": '2025-04-11 15:47:54',         # Last accessed timestamp
 }
 ```
 
@@ -97,21 +128,24 @@ Find files based on any combination of metadata:
 
 ```python
 # Simple key-value search
-docs = manager.search({"tags": "important"})
+docs = manager.search({"user.tags": {"$contains": "important"}})
+# Expected output: List of file paths with the "important" tag
 
 # Multiple criteria
 results = manager.search({
-    "tags": "report",
-    "owner": "finance-team",
-    "status": "approved"
+    "user.tags": {"$contains": "report"},
+    "user.owner": "finance-team",
+    "user.status": "approved"
 })
+# Expected output: List of file paths matching all criteria
 
 # Advanced searching with operators
 monthly_reports = manager.search({
-    "tags": {"$contains": "monthly-report"},
-    "created_at": {"$gt": "2025-01-01"},
-    "size": {"$lt": 1000000}
+    "user.tags": {"$contains": "monthly-report"},
+    "system.created": {"$gt": 1712345678.0},  # Unix timestamp
+    "system.size": {"$lt": 1000000}
 })
+# Expected output: List of file paths matching all criteria
 ```
 
 ### File Operations
@@ -120,25 +154,25 @@ Act on your search results directly:
 
 ```python
 # Find and process files
-for file in manager.search({"project": "website", "status": "pending"}):
-    # file.path contains the full path to work with
-    print(f"Processing {file.path}")
+for file in manager.search({"user.project": "website", "user.status": "pending"}):
+    # file contains the full path to work with
+    print(f"Processing {file}")
     
     # Example operations
     import shutil, os
     
     # Copy to a different location
-    shutil.copy(file.path, "/path/to/backup/")
+    shutil.copy(file, "/path/to/backup/")
     
     # Open file for reading
-    with open(file.path, 'r') as f:
+    with open(file, 'r') as f:
         content = f.read()
         
     # Move file
-    shutil.move(file.path, "/path/to/new/location/")
+    shutil.move(file, "/path/to/new/location/")
     
     # Delete file
-    # os.remove(file.path)
+    # os.remove(file)
 ```
 
 ## 🔌 Plugin Architecture
@@ -154,17 +188,12 @@ class PDFPlugin(FilePlugin):
 
     def extract(self, file_path):
         # Use a PDF library to extract metadata
-        import PyPDF2
-        
-        with open(file_path, 'rb') as f:
-            reader = PyPDF2.PdfFileReader(f)
-            info = reader.getDocumentInfo()
-            
+        # This is a simplified example
         return {
-            "title": info.title,
-            "author": info.author,
-            "pages": reader.getNumPages(),
-            "encrypted": reader.isEncrypted
+            "title": "Sample PDF",
+            "author": "John Doe",
+            "pages": 42,
+            "encrypted": False
         }
 
 # Register the plugin
@@ -177,8 +206,8 @@ Now when you add a PDF file, this metadata is automatically extracted:
 manager.add_file("document.pdf")
 meta = manager.get_metadata("document.pdf")
 
-print(meta["pages"])  # Output: 42
-print(meta["author"])  # Output: "Jane Smith"
+print(meta["plugin"]["pages"])  # Output: 42
+print(meta["plugin"]["author"])  # Output: "John Doe"
 ```
 
 ## 📋 Detailed Usage Guide
@@ -187,58 +216,111 @@ print(meta["author"])  # Output: "Jane Smith"
 
 ```python
 # Add a file with metadata
-manager.add_file("report.xlsx", metadata={
+manager.add_file("report.xlsx", {
     "department": "finance",
     "quarter": "Q2",
     "year": 2025
 })
 
+# Expected output: None (successful operation)
+
 # Get all metadata for a file
 metadata = manager.get_metadata("report.xlsx")
+print(metadata)
+# Expected output:
+# {
+#   'system': {
+#     'path': '/path/to/report.xlsx',
+#     'filename': 'report.xlsx',
+#     'extension': 'xlsx',
+#     'size': 12345,
+#     'created': 1712345678.0,
+#     'modified': 1712345678.0,
+#     'accessed': 1712345678.0
+#   },
+#   'user': {
+#     'department': 'finance',
+#     'quarter': 'Q2',
+#     'year': 2025
+#   }
+# }
 
 # Update specific metadata fields
 manager.update_metadata("report.xlsx", {
     "status": "final",
     "reviewed_by": "CFO"
 })
+# Expected output: None (successful operation)
+
+# Get updated metadata
+updated_metadata = manager.get_metadata("report.xlsx")
+print(updated_metadata["user"])
+# Expected output:
+# {
+#   'department': 'finance',
+#   'quarter': 'Q2',
+#   'year': 2025,
+#   'status': 'final',
+#   'reviewed_by': 'CFO'
+# }
 
 # Replace all user metadata
 manager.replace_metadata("report.xlsx", {
     "archived": True,
     "archive_date": "2025-07-01"
 })
+# Expected output: None (successful operation)
+
+# Get replaced metadata
+replaced_metadata = manager.get_metadata("report.xlsx")
+print(replaced_metadata["user"])
+# Expected output:
+# {
+#   'archived': True,
+#   'archive_date': '2025-07-01'
+# }
 
 # Remove all metadata
 manager.delete_metadata("report.xlsx")
+# Expected output: None (successful operation)
 ```
 
-### Bulk Operations
+### Working with Multiple Files
 
 Process multiple files efficiently:
 
 ```python
-# Add multiple files
-files_to_add = [
-    ("doc1.pdf", {"project": "alpha"}),
-    ("doc2.pdf", {"project": "alpha"}),
-    ("image.png", {"project": "beta"})
-]
+import os
 
-manager.add_files(files_to_add)
+# Create test files
+with open("doc1.txt", "w") as f:
+    f.write("Test document 1")
+with open("doc2.txt", "w") as f:
+    f.write("Test document 2")
+with open("image.png", "w") as f:
+    f.write("Fake image file for testing")
 
-# Bulk update
-manager.update_many(
-    query={"project": "alpha"},
-    update={"status": "review"}
-)
+# Add files with metadata
+manager.add_file("doc1.txt", {"project": "alpha", "status": "draft"})
+manager.add_file("doc2.txt", {"project": "alpha", "status": "draft"})
+manager.add_file("image.png", {"project": "beta", "status": "draft"})
 
-# Add all files in a directory (with recursive option)
-manager.add_directory(
-    "/path/to/project/",
-    recursive=True,
-    metadata={"project": "alpha"},
-    exclude_patterns=["*.tmp", ".*"]
-)
+# Search for all files in project alpha
+alpha_files = manager.search({"user.project": "alpha"})
+print("Alpha project files:", list(alpha_files))
+# Expected output:
+# Alpha project files: ['doc1.txt', 'doc2.txt']
+
+# Search for all draft files
+draft_files = manager.search({"user.status": "draft"})
+print("Draft files:", list(draft_files))
+# Expected output:
+# Draft files: ['doc1.txt', 'doc2.txt', 'image.png']
+
+# Clean up
+os.remove("doc1.txt")
+os.remove("doc2.txt")
+os.remove("image.png")
 ```
 
 ### Storage Options
@@ -246,23 +328,24 @@ manager.add_directory(
 Choose where your metadata is stored:
 
 ```python
+from filemetalib import FileMetaManager
+from filemetalib.storage import MemoryDB, JsonDB, SQLiteDB
+
 # In-memory storage (default)
 manager = FileMetaManager()
 
 # SQLite backend
-manager = FileMetaManager(storage="sqlite:///path/to/metadata.db")
+sqlite_manager = FileMetaManager(storage_backend=SQLiteDB("metadata.db"))
 
 # JSON file storage
-manager = FileMetaManager(storage="json:///path/to/metadata.json")
+json_manager = FileMetaManager(storage_backend=JsonDB("metadata.json"))
 
-# Custom storage
-from filemetalib import StorageBackend
-
-class MyCustomStorage(StorageBackend):
-    # Implement required methods
-    pass
-    
-manager = FileMetaManager(storage=MyCustomStorage())
+# Example with JSON storage
+json_manager.add_file("test.txt", {"tags": ["example"]})
+metadata = json_manager.get_metadata("test.txt")
+print(metadata["user"])
+# Expected output:
+# {'tags': ['example']}
 ```
 
 ## 🛡️ Advanced Usage & Edge Cases
@@ -272,126 +355,150 @@ manager = FileMetaManager(storage=MyCustomStorage())
 Keep metadata in sync with file system changes:
 
 ```python
-# Detect file system changes and update metadata accordingly
-manager.sync()
+import os
 
-# Configure automatic sync interval (in seconds)
-manager = FileMetaManager(auto_sync=300)  # Sync every 5 minutes
+# Create test files
+with open("sync_test1.txt", "w") as f:
+    f.write("Test file 1")
+with open("sync_test2.txt", "w") as f:
+    f.write("Test file 2")
 
-# Check for and clean up orphaned metadata (files that no longer exist)
-orphaned = manager.cleanup_orphaned()
-print(f"Removed metadata for {len(orphaned)} deleted files")
+# Add files to manager
+manager = FileMetaManager()
+manager.add_file("sync_test1.txt", {"status": "active"})
+manager.add_file("sync_test2.txt", {"status": "active"})
+
+# Delete a file outside the manager
+os.remove("sync_test1.txt")
+
+# Sync to detect changes
+result = manager.sync()
+print(f"Sync results: {result}")
+# Expected output:
+# Sync results: {'added': 0, 'updated': 0, 'removed': 1}
+
+# Check if metadata was removed
+try:
+    manager.get_metadata("sync_test1.txt")
+    print("Metadata still exists")
+except:
+    print("Metadata was removed")
+# Expected output:
+# Metadata was removed
+
+# Clean up
+os.remove("sync_test2.txt")
 ```
 
 ### Error Handling
 
 ```python
-from filemetalib import FileAccessError, PluginError
+from filemetalib import FileMetaManager
+from filemetalib.exceptions import FileAccessError, PluginError
 
+manager = FileMetaManager()
+
+# Try to access a non-existent file
 try:
-    manager.add_file("locked_file.pdf")
+    manager.add_file("non_existent_file.txt")
 except FileAccessError as e:
-    print(f"Cannot access file: {e}")
+    print(f"File access error: {e}")
+# Expected output:
+# File access error: File not found: non_existent_file.txt
 
-# Configure plugin error behavior
-manager = FileMetaManager(
-    # Options: 'ignore', 'warn', 'raise'
-    plugin_error_mode='warn'
-)
+# Try to get metadata for a file that hasn't been added
+try:
+    manager.get_metadata("unknown_file.txt")
+except FileAccessError as e:
+    print(f"File access error: {e}")
+# Expected output:
+# File access error: No metadata found for: unknown_file.txt
 ```
 
-### Plugin Conflict Resolution
-
-Control how conflicts between plugins are handled:
+### Plugin Example with Image Files
 
 ```python
-# Register plugin with priority (higher number = higher priority)
-manager.register_plugin(PDFPlugin(), priority=100)
-manager.register_plugin(DocumentPlugin(), priority=50)
+import os
+from filemetalib import FileMetaManager
+from filemetalib.plugins import FilePlugin
 
-# Configure conflict resolution strategy
-manager = FileMetaManager(
-    # Options: 'priority', 'merge', 'first_only', 'last_only'
-    plugin_conflict_mode='merge'
-)
+# Create a simple image plugin
+class SimpleImagePlugin(FilePlugin):
+    def supports(self, path):
+        return path.lower().endswith(('.png', '.jpg', '.jpeg'))
+        
+    def extract(self, path):
+        # In a real plugin, you'd use PIL or another library to get actual metadata
+        ext = os.path.splitext(path)[1].lower()
+        return {
+            "format": ext[1:].upper(),
+            "dimensions": "800x600",  # Placeholder
+            "color_mode": "RGB"
+        }
+
+# Create a manager and register the plugin
+manager = FileMetaManager()
+manager.register_plugin(SimpleImagePlugin())
+
+# Create a test image file
+with open("test_image.png", "w") as f:
+    f.write("Fake image data")
+
+# Add the file and get metadata
+manager.add_file("test_image.png", {"tags": ["test"]})
+metadata = manager.get_metadata("test_image.png")
+
+# Print the plugin-extracted metadata
+print("Plugin metadata:", metadata.get("plugin", {}))
+# Expected output:
+# Plugin metadata: {'format': 'PNG', 'dimensions': '800x600', 'color_mode': 'RGB'}
+
+# Clean up
+os.remove("test_image.png")
 ```
 
-### Performance Optimization
-
-For large file systems:
+### Metadata Export and Import
 
 ```python
-# Enable incremental indexing
-manager = FileMetaManager(
-    incremental_indexing=True,
-    index_batch_size=1000
-)
+import os
+from filemetalib import FileMetaManager
 
-# Create indexes for faster searching
-manager.create_index("tags")
-manager.create_index("owner")
+# Create a manager and add some files
+manager = FileMetaManager()
 
-# Limit memory usage
-manager = FileMetaManager(
-    max_cache_size=10000,  # Maximum files to keep in memory
-    cache_policy='lru'     # Least Recently Used eviction
-)
-```
+# Create test files
+with open("export_test1.txt", "w") as f:
+    f.write("Test file 1")
+with open("export_test2.txt", "w") as f:
+    f.write("Test file 2")
 
-### Cross-Platform Compatibility
+# Add files with metadata
+manager.add_file("export_test1.txt", {"category": "document", "status": "active"})
+manager.add_file("export_test2.txt", {"category": "document", "status": "archived"})
 
-```python
-# Normalize paths for cross-platform compatibility
-manager = FileMetaManager(normalize_paths=True)
+# Export metadata to a file
+manager.export_metadata("metadata_backup.json")
+print("Metadata exported")
+# Expected output:
+# Metadata exported
 
-# Configure path handling for specific OS
-manager = FileMetaManager(
-    path_separator='auto',  # 'auto', '/', or '\'
-    case_sensitive=None     # None (auto-detect), True, or False
-)
-```
+# Create a new manager and import the metadata
+new_manager = FileMetaManager()
+count = new_manager.import_metadata("metadata_backup.json")
+print(f"Imported {count} entries")
+# Expected output:
+# Imported 2 entries
 
-### Concurrency Support
+# Verify the imported metadata
+metadata = new_manager.get_metadata("export_test1.txt")
+print("Imported metadata:", metadata["user"])
+# Expected output:
+# Imported metadata: {'category': 'document', 'status': 'active'}
 
-Thread and process-safe operations:
-
-```python
-# Thread-safe manager
-manager = FileMetaManager(thread_safe=True)
-
-# Use context manager for safe concurrent access
-with manager.transaction() as txn:
-    txn.add_file("doc1.txt", {"status": "processing"})
-    txn.update_metadata("doc2.txt", {"status": "complete"})
-    # Changes applied atomically at context exit
-```
-
-### Metadata Size Management
-
-```python
-# Set metadata size limits
-manager = FileMetaManager(
-    max_metadata_size=1024 * 1024,  # 1MB per file
-    compress_large_metadata=True
-)
-
-# Check current metadata size
-size_info = manager.get_metadata_size("large_file.psd")
-print(f"Metadata size: {size_info['bytes']} bytes")
-```
-
-### Data Migration & Backup
-
-```python
-# Export metadata to file
-manager.export_metadata("/path/to/backup.json")
-
-# Import metadata from file
-manager.import_metadata("/path/to/backup.json", 
-                       conflict_mode="newer")  # Use newer timestamps on conflict
-
-# Migrate between storage backends
-manager.migrate_storage("sqlite:///new_database.db")
+# Clean up
+os.remove("export_test1.txt")
+os.remove("export_test2.txt")
+os.remove("metadata_backup.json")
 ```
 
 ## 🔧 System Architecture & Design
@@ -680,33 +787,134 @@ manager.add_listener("metadata_changed", on_metadata_changed)
 ### Project File Management
 
 ```python
-# Add project files with metadata
-manager.add_file("src/main.py", metadata={"module": "core", "author": "dev1"})
-manager.add_file("src/utils.py", metadata={"module": "utils", "author": "dev2"})
-manager.add_file("tests/test_main.py", metadata={"test_for": "main.py", "status": "passing"})
+import os
+from filemetalib import FileMetaManager
 
-# Find files needing review
-for file in manager.search({"author": "dev1", "status": {"$ne": "reviewed"}}):
-    print(f"Needs review: {file.path}")
+# Create a manager
+manager = FileMetaManager()
+
+# Create test files
+os.makedirs("project/src", exist_ok=True)
+os.makedirs("project/tests", exist_ok=True)
+
+with open("project/src/main.py", "w") as f:
+    f.write("# Main module")
+with open("project/src/utils.py", "w") as f:
+    f.write("# Utilities module")
+with open("project/tests/test_main.py", "w") as f:
+    f.write("# Tests for main module")
+
+# Add project files with metadata
+manager.add_file("project/src/main.py", {
+    "module": "core", 
+    "author": "dev1",
+    "status": "in progress"
+})
+manager.add_file("project/src/utils.py", {
+    "module": "utils", 
+    "author": "dev2",
+    "status": "complete"
+})
+manager.add_file("project/tests/test_main.py", {
+    "test_for": "main.py", 
+    "author": "dev1",
+    "status": "passing"
+})
+
+# Find files by author
+dev1_files = manager.search({"user.author": "dev1"})
+print("Files by dev1:", list(dev1_files))
+# Expected output:
+# Files by dev1: ['project/src/main.py', 'project/tests/test_main.py']
+
+# Find files needing review (in progress)
+in_progress = manager.search({"user.status": "in progress"})
+print("Files in progress:", list(in_progress))
+# Expected output:
+# Files in progress: ['project/src/main.py']
+
+# Find test files
+test_files = manager.search({"user.test_for": {"$exists": True}})
+print("Test files:", list(test_files))
+# Expected output:
+# Test files: ['project/tests/test_main.py']
+
+# Clean up
+import shutil
+shutil.rmtree("project")
 ```
 
 ### Media Library Organization
 
 ```python
-# Add media files
-manager.add_file("movies/inception.mp4", metadata={
+import os
+from filemetalib import FileMetaManager
+
+# Create a manager
+manager = FileMetaManager()
+
+# Create test directory
+os.makedirs("media", exist_ok=True)
+
+# Create some dummy media files
+with open("media/movie1.mp4", "w") as f:
+    f.write("Fake movie file")
+with open("media/movie2.mp4", "w") as f:
+    f.write("Another fake movie file")
+with open("media/song.mp3", "w") as f:
+    f.write("Fake audio file")
+
+# Add media files with metadata
+manager.add_file("media/movie1.mp4", {
     "type": "movie",
     "genre": ["sci-fi", "action"],
     "director": "Christopher Nolan",
-    "year": 2010
+    "year": 2010,
+    "rating": 5
 })
 
-# Register media plugins for auto-extraction
-manager.register_plugin(VideoMetadataPlugin())
-manager.register_plugin(AudioMetadataPlugin())
+manager.add_file("media/movie2.mp4", {
+    "type": "movie",
+    "genre": ["comedy", "drama"],
+    "director": "Wes Anderson",
+    "year": 2018,
+    "rating": 4
+})
 
-# Find all sci-fi movies
-sci_fi = manager.search({"type": "movie", "genre": "sci-fi"})
+manager.add_file("media/song.mp3", {
+    "type": "audio",
+    "genre": ["rock"],
+    "artist": "The Beatles",
+    "year": 1969,
+    "rating": 5
+})
+
+# Find all movies
+movies = manager.search({"user.type": "movie"})
+print("Movies:", list(movies))
+# Expected output:
+# Movies: ['media/movie1.mp4', 'media/movie2.mp4']
+
+# Find sci-fi content
+scifi = manager.search({"user.genre": {"$contains": "sci-fi"}})
+print("Sci-fi content:", list(scifi))
+# Expected output:
+# Sci-fi content: ['media/movie1.mp4']
+
+# Find highly rated content (rating >= 5)
+top_rated = manager.search({"user.rating": 5})
+print("Top rated content:", list(top_rated))
+# Expected output:
+# Top rated content: ['media/movie1.mp4', 'media/song.mp3']
+
+# Find content from before 2015
+old_content = manager.search({"user.year": {"$lt": 2015}})
+print("Pre-2015 content:", list(old_content))
+# Expected output:
+# Pre-2015 content: ['media/movie1.mp4', 'media/song.mp3']
+
+# Clean up
+shutil.rmtree("media")
 ```
 
 ## 🔄 Troubleshooting
