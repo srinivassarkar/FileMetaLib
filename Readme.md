@@ -5,7 +5,7 @@ A developer-first Python library for attaching, indexing, and querying metadata 
 ## 📦 Installation
 
 ```bash
-pip install filemetalib
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple FileMetaLib
 ```
 ## 🚀 Quick Start
 
