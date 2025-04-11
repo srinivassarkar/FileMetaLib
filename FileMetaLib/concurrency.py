@@ -5,7 +5,7 @@ Concurrency utilities for FileMetaLib.
 
 import threading
 import time
-from typing import Dict, Any, Callable, Optional, TypeVar, Generic
+from typing import Callable, Optional, TypeVar, Generic
 
 T = TypeVar("T")
 

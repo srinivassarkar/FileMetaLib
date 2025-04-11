@@ -6,7 +6,7 @@ Image file plugin for FileMetaLib.
 import os
 from typing import Dict, Any
 
-from ..plugins import FilePlugin
+from ..file_plugins import FilePlugin
 from ..exceptions import PluginError
 
 

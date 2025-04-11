@@ -1,4 +1,4 @@
-# __init__.py
+# __init__.py 
 """
 FileMetaLib: A library for attaching, indexing, and querying file metadata.
 
@@ -8,14 +8,20 @@ and powerful search capabilities.
 """
 
 from .manager import FileMetaManager
-from .plugins import FilePlugin
+from .plugins  import FilePlugin, PluginRegistry  
 from .exceptions import FileMetaError, FileAccessError, PluginError
+from .storage import StorageBackend, MemoryDB, JsonDB, SQLiteDB  
 
 __version__ = "0.1.0"
 __all__ = [
-    "FileMetaManager",
-    "FilePlugin",
-    "FileMetaError",
-    "FileAccessError",
+    "FileMetaManager", 
+    "FilePlugin", 
+    "PluginRegistry",
+    "FileMetaError", 
+    "FileAccessError", 
     "PluginError",
+    "StorageBackend",
+    "MemoryDB",
+    "JsonDB",
+    "SQLiteDB"
 ]

@@ -3,6 +3,7 @@
 Core manager class for FileMetaLib.
 """
 
+
 import os
 import time
 import threading
@@ -10,7 +11,7 @@ from typing import Dict, List, Any, Optional, Union, Callable, Iterable
 
 from .storage import StorageBackend, MemoryDB
 from .registry import MetadataRegistry
-from .plugins import PluginRegistry
+from .plugins  import PluginRegistry, FilePlugin  
 from .query import QueryEngine
 from .exceptions import FileAccessError, PluginError
 from .utils import normalize_path, get_system_metadata
@@ -103,7 +104,7 @@ class FileMetaManager:
             print(f"Plugin error for {path}: {e}")
 
         # Store metadata
-        if self.thread_safe:
+        if self.thread_safe and self._lock is not None:
             with self._lock:
                 self.registry.add(path, full_metadata)
                 self.storage.save(path, full_metadata)
@@ -128,7 +129,7 @@ class FileMetaManager:
         """
         path = normalize_path(path)
 
-        if self.thread_safe:
+        if self.thread_safe and self._lock is not None:
             with self._lock:
                 metadata = self.registry.get(path)
         else:
@@ -155,7 +156,7 @@ class FileMetaManager:
         """
         path = normalize_path(path)
 
-        if self.thread_safe:
+        if self.thread_safe and self._lock is not None:
             with self._lock:
                 current = self.registry.get(path)
                 if not current:
@@ -199,7 +200,7 @@ class FileMetaManager:
         """
         path = normalize_path(path)
 
-        if self.thread_safe:
+        if self.thread_safe and self._lock is not None:
             with self._lock:
                 current = self.registry.get(path)
                 if not current:
@@ -236,7 +237,7 @@ class FileMetaManager:
         """
         path = normalize_path(path)
 
-        if self.thread_safe:
+        if self.thread_safe and self._lock is not None:
             with self._lock:
                 self.registry.remove(path)
                 self.storage.delete(path)
@@ -265,7 +266,7 @@ class FileMetaManager:
         Returns:
             Dictionary with counts of added, updated, and removed files.
         """
-        if self.thread_safe:
+        if self.thread_safe and self._lock is not None:
             with self._lock:
                 return self._do_sync()
         else:
@@ -278,7 +279,7 @@ class FileMetaManager:
         Returns:
             Number of orphaned entries removed.
         """
-        if self.thread_safe:
+        if self.thread_safe and self._lock is not None:
             with self._lock:
                 return self._do_cleanup()
         else:
@@ -303,7 +304,7 @@ class FileMetaManager:
         Returns:
             Number of entries exported.
         """
-        if self.thread_safe:
+        if self.thread_safe and self._lock is not None:
             with self._lock:
                 all_metadata = {
                     path: self.registry.get(path)
@@ -348,7 +349,7 @@ class FileMetaManager:
 
         count = 0
 
-        if self.thread_safe:
+        if self.thread_safe and self._lock is not None:
             with self._lock:
                 for path, metadata in imported_data.items():
                     if self._import_entry(path, metadata, conflict_strategy):
@@ -413,14 +414,19 @@ class FileMetaManager:
     def _run_plugins(self, path: str) -> Dict[str, Any]:
         """
         Run plugins on a file to extract metadata.
-
+        
         Args:
             path: Path to the file.
-
+            
         Returns:
             Metadata extracted by plugins.
         """
-        return self.plugins.process_file(path)
+        try:
+            return self.plugins.process_file(path)
+        except PluginError as e:
+            # Log error but don't propagate
+            print(f"Plugin error for {path}: {e}")
+            return {}
 
     def _do_sync(self) -> Dict[str, int]:
         """

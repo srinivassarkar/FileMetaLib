@@ -51,7 +51,7 @@ def get_system_metadata(path: str) -> Dict[str, Any]:
         "filename": os.path.basename(path),
         "extension": os.path.splitext(path)[1].lower()[1:],
         "size": stat.st_size,
-        "created": stat.st_ctime,
+        "created": stat. st_birthtime,
         "modified": stat.st_mtime,
         "accessed": stat.st_atime,
     }

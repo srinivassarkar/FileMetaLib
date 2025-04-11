@@ -3,4 +3,4 @@
 Plugins for FileMetaLib.
 """
 
-from ..plugins import FilePlugin
+from ..file_plugins import FilePlugin
