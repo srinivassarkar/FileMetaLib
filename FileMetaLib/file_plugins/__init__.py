@@ -3,4 +3,9 @@
 Plugins for FileMetaLib.
 """
 
-from ..file_plugins import FilePlugin
+from ..plugins import FilePlugin  # Import from parent package
+
+# Import specific plugins to make them available
+from .image_plugin import ImagePlugin
+
+__all__ = ["ImagePlugin"]
