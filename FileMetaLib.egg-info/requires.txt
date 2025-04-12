@@ -1,6 +1,0 @@
-
-[all]
-Pillow
-
-[image]
-Pillow
