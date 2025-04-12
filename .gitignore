@@ -1,26 +1,42 @@
-# Byte-compiled / optimized / DLL files
+# Python cache and bytecode
 __pycache__/
 *.py[cod]
-*$py.class
 
-# Virtual environment
+# Virtual environments
 .venv/
-env/
 venv/
+env/
 
-# VSCode / PyCharm settings
+# IDE settings
 .vscode/
 .idea/
 
-# Mac/Unix system files
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# System files
 .DS_Store
 
-# Test / coverage output
-.coverage
-htmlcov/
-coverage.xml
-
-# Logs and local settings
+# Logs and runtime files
 *.log
 *.env
 .env*
+
+# Test and coverage files
+.coverage
+coverage.xml
+htmlcov/
+
+# PyInstaller
+*.spec
+
+# MyPy
+.mypy_cache/
+
+# Pytest
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
