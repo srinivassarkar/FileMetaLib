@@ -418,43 +418,45 @@ except FileAccessError as e:
 ### Plugin Example with Image Files
 
 ```python
+from filemetalib import FileMetaManager, FilePlugin
+from filemetalib.storage import SQLiteDB
+from PIL import Image
 import os
-from filemetalib import FileMetaManager
-from filemetalib.plugins import FilePlugin
 
-# Create a simple image plugin
-class SimpleImagePlugin(FilePlugin):
+
+# Define a PNG plugin that extracts real metadata
+class RealPNGPlugin(FilePlugin):
     def supports(self, path):
-        return path.lower().endswith(('.png', '.jpg', '.jpeg'))
-        
+        return path.lower().endswith(".png")
+
     def extract(self, path):
-        # In a real plugin, you'd use PIL or another library to get actual metadata
-        ext = os.path.splitext(path)[1].lower()
-        return {
-            "format": ext[1:].upper(),
-            "dimensions": "800x600",  # Placeholder
-            "color_mode": "RGB"
-        }
+        try:
+            with Image.open(path) as img:
+                return {
+                    "format": img.format or "PNG",
+                    "dimensions": f"{img.width}x{img.height}",
+                    "mode": img.mode,
+                    "size_bytes": os.path.getsize(path),
+                }
+        except Exception as e:
+            return {"error": f"Failed to process image: {str(e)}"}
 
-# Create a manager and register the plugin
-manager = FileMetaManager()
-manager.register_plugin(SimpleImagePlugin())
 
-# Create a test image file
-with open("test_image.png", "w") as f:
-    f.write("Fake image data")
+# Initialize manager and register plugin
+manager = FileMetaManager(storage_backend=SQLiteDB("metadata.db"))
+manager.register_plugin(RealPNGPlugin())
 
-# Add the file and get metadata
-manager.add_file("test_image.png", {"tags": ["test"]})
-metadata = manager.get_metadata("test_image.png")
+# Re-add PNG file to trigger plugin
+manager.add_file(
+    "deploment_stretegy.png",
+    {"type": "image", "category": "strategy", "project": "deployment"},
+)
 
-# Print the plugin-extracted metadata
-print("Plugin metadata:", metadata.get("plugin", {}))
-# Expected output:
-# Plugin metadata: {'format': 'PNG', 'dimensions': '800x600', 'color_mode': 'RGB'}
+# Get metadata to check plugin data
+metadata = manager.get_metadata("deploment_stretegy.png")
+print("Metadata with plugin data for deploment_stretegy.png:")
+print(metadata)
 
-# Clean up
-os.remove("test_image.png")
 ```
 
 ### Metadata Export and Import
