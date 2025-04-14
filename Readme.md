@@ -509,7 +509,6 @@ FileMetaLib is designed with several key architectural principles to ensure it's
 
 ### Core Architecture Components
 
-![FileMetaLib Architecture](https://placeholder-for-architecture-diagram.png)
 
 #### 1. Manager Layer
 
@@ -771,18 +770,6 @@ class RedisStorageBackend(StorageBackend):
         pass
 ```
 
-### Event Listeners
-
-React to metadata changes:
-
-```python
-def on_metadata_changed(file_path, old_meta, new_meta):
-    print(f"Metadata changed for {file_path}")
-    
-manager.add_listener("metadata_changed", on_metadata_changed)
-
-# Other events: 'file_added', 'file_removed', 'sync_complete'
-```
 
 ## 📚 Examples
 
@@ -846,91 +833,6 @@ import shutil
 shutil.rmtree("project")
 ```
 
-### Media Library Organization
-
-```python
-import os
-from filemetalib import FileMetaManager
-
-# Create a manager
-manager = FileMetaManager()
-
-# Create test directory
-os.makedirs("media", exist_ok=True)
-
-# Create some dummy media files
-with open("media/movie1.mp4", "w") as f:
-    f.write("Fake movie file")
-with open("media/movie2.mp4", "w") as f:
-    f.write("Another fake movie file")
-with open("media/song.mp3", "w") as f:
-    f.write("Fake audio file")
-
-# Add media files with metadata
-manager.add_file("media/movie1.mp4", {
-    "type": "movie",
-    "genre": ["sci-fi", "action"],
-    "director": "Christopher Nolan",
-    "year": 2010,
-    "rating": 5
-})
-
-manager.add_file("media/movie2.mp4", {
-    "type": "movie",
-    "genre": ["comedy", "drama"],
-    "director": "Wes Anderson",
-    "year": 2018,
-    "rating": 4
-})
-
-manager.add_file("media/song.mp3", {
-    "type": "audio",
-    "genre": ["rock"],
-    "artist": "The Beatles",
-    "year": 1969,
-    "rating": 5
-})
-
-# Find all movies
-movies = manager.search({"user.type": "movie"})
-print("Movies:", list(movies))
-# Expected output:
-# Movies: ['media/movie1.mp4', 'media/movie2.mp4']
-
-# Find sci-fi content
-scifi = manager.search({"user.genre": {"$contains": "sci-fi"}})
-print("Sci-fi content:", list(scifi))
-# Expected output:
-# Sci-fi content: ['media/movie1.mp4']
-
-# Find highly rated content (rating >= 5)
-top_rated = manager.search({"user.rating": 5})
-print("Top rated content:", list(top_rated))
-# Expected output:
-# Top rated content: ['media/movie1.mp4', 'media/song.mp3']
-
-# Find content from before 2015
-old_content = manager.search({"user.year": {"$lt": 2015}})
-print("Pre-2015 content:", list(old_content))
-# Expected output:
-# Pre-2015 content: ['media/movie1.mp4', 'media/song.mp3']
-
-# Clean up
-shutil.rmtree("media")
-```
-
-## 🔄 Troubleshooting
-
-### Common Issues and Solutions
-
-| Issue | Solution |
-|-------|----------|
-| Files moved outside library | Use `manager.sync()` or `manager.reconcile_paths()` |
-| Slow search performance | Create indexes on frequently searched fields |
-| Large memory usage | Configure `max_cache_size` and `cache_policy` |
-| Plugin failures | Set `plugin_error_mode='warn'` and check logs |
-| Metadata not persisting | Verify storage backend configuration |
-| Path separator issues | Set `normalize_paths=True` |
 
 ### Logging and Debugging
 
